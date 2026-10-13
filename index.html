@@ -1,0 +1,959 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Skrytka Storage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: a roll-up storage door as the visual anchor; floor-plan cells show the chosen area; signage type for headings, mono for box IDs. */
+:root {
+  --bg: #E9EDEF;
+  --surface: #FFFFFF;
+  --surface-2: #F2F5F6;
+  --ink: #13222C;
+  --muted: #52646F;
+  --line: #CBD5DA;
+  --door: #1F4E5F;
+  --door-ink: #FFFFFF;
+  --signal: #F2B705;
+  --signal-ink: #13222C;
+  --ok: #1E7F4F;
+  --warn: #8A5F00;
+  --danger: #B3261E;
+  --focus: #1F4E5F;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E181F; --surface: #15232D; --surface-2: #1B2C38; --ink: #E7EEF1; --muted: #9AB0BB;
+    --line: #2B4150; --door: #6FB3C8; --door-ink: #0E181F; --signal: #F2B705; --signal-ink: #13222C;
+    --ok: #5CC592; --warn: #E3B341; --danger: #FF8A80; --focus: #6FB3C8; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E181F; --surface: #15232D; --surface-2: #1B2C38; --ink: #E7EEF1; --muted: #9AB0BB;
+  --line: #2B4150; --door: #6FB3C8; --door-ink: #0E181F; --signal: #F2B705; --signal-ink: #13222C;
+  --ok: #5CC592; --warn: #E3B341; --danger: #FF8A80; --focus: #6FB3C8; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* top strip and header */
+.proto { background: var(--ink); color: var(--bg); font-family: var(--font-mono); font-size: 12px; text-align: center; padding: 6px 16px; }
+header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding-block: 10px; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 28px; text-decoration: none; display: flex; align-items: center; gap: 10px; letter-spacing: .01em; }
+.brand i { width: 26px; height: 22px; display: block; border-radius: 3px 3px 0 0; background: repeating-linear-gradient(180deg, var(--door) 0 4px, var(--bg) 4px 6px); border: 2px solid var(--door); }
+nav.main { display: flex; gap: 4px; flex-wrap: wrap; }
+nav.main a { text-decoration: none; padding: 8px 12px; border-radius: 4px; font-weight: 500; font-size: 15px; }
+nav.main a:hover { background: var(--surface-2); }
+nav.main a[aria-current="page"] { background: var(--ink); color: var(--bg); }
+.lang { display: flex; border: 2px solid var(--ink); border-radius: 4px; overflow: hidden; }
+.lang button { border: 0; background: transparent; padding: 6px 12px; font-family: var(--font-mono); font-size: 13px; font-weight: 500; cursor: pointer; min-height: 36px; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 2px solid var(--ink); background: transparent; padding: 12px 20px; border-radius: 4px; font-weight: 600; cursor: pointer; text-decoration: none; min-height: 46px; }
+.btn:hover { background: var(--surface-2); }
+.btn-signal { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
+.btn-signal:hover { background: var(--signal); filter: brightness(.95); }
+.btn-small { padding: 6px 12px; min-height: 36px; font-size: 14px; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding-block: 56px 48px; }
+.hero h1 { font-size: clamp(46px, 7.4vw, 92px); letter-spacing: -.005em; margin-block: 14px 20px; }
+.hero p.lead { font-size: 19px; max-width: 34em; color: var(--muted); }
+.hero .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.door { min-height: 340px; border-radius: 6px; position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; color: var(--door-ink);
+  background: repeating-linear-gradient(180deg, var(--door) 0 16px, color-mix(in srgb, var(--door) 78%, #000) 16px 19px); border: 2px solid color-mix(in srgb, var(--door) 70%, #000); }
+.door::after { content: ""; position: absolute; left: 50%; bottom: 14px; width: 64px; height: 8px; margin-left: -32px; border-radius: 4px; background: color-mix(in srgb, var(--door) 55%, #000); }
+.door .plate { align-self: flex-start; background: var(--signal); color: var(--signal-ink); padding: 8px 12px; border-radius: 3px; font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+.door .price { font-family: var(--font-display); font-size: 56px; font-weight: 700; line-height: 1; background: color-mix(in srgb, var(--door) 90%, #000); align-self: flex-start; padding: 8px 14px 10px; border-radius: 3px; margin-bottom: 26px; }
+.door .price small { font-family: var(--font-body); font-size: 14px; font-weight: 500; margin-left: 4px; }
+
+/* sections */
+section.block { padding-block: 48px; border-top: 1px solid var(--line); scroll-margin-top: 70px; }
+section.block > .wrap > h2 { font-size: clamp(32px, 4.4vw, 48px); margin-bottom: 8px; }
+.sub { color: var(--muted); max-width: 40em; margin-bottom: 28px; }
+.fit-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 32px; }
+.fit-list div { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.fit-list b { font-weight: 600; }
+.fit-list span { font-family: var(--font-mono); font-size: 14px; color: var(--muted); white-space: nowrap; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 20px; }
+.steps li::before { content: var(--step-label, "Step") " " counter(s); font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; margin-bottom: 10px; }
+.steps h3 { font-size: 26px; margin-bottom: 8px; }
+.steps p { color: var(--muted); font-size: 15px; }
+.starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.starter { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
+.starter h3 { font-size: 34px; }
+.starter .cost { font-family: var(--font-mono); font-size: 15px; }
+.starter p { color: var(--muted); font-size: 15px; flex: 1; }
+details.faq { border-bottom: 1px solid var(--line); padding: 16px 0; }
+details.faq summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+details.faq summary::after { content: "+"; font-family: var(--font-mono); }
+details.faq[open] summary::after { content: "\2212"; }
+details.faq p { color: var(--muted); margin-top: 10px; max-width: 46em; }
+footer.site { background: repeating-linear-gradient(180deg, var(--door) 0 16px, color-mix(in srgb, var(--door) 78%, #000) 16px 19px); color: var(--door-ink); padding-block: 36px; margin-top: 40px; }
+footer.site .wrap { display: flex; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; }
+footer.site .brand i { border-color: var(--door-ink); background: repeating-linear-gradient(180deg, var(--door-ink) 0 4px, transparent 4px 6px); }
+footer.site p { font-size: 14px; max-width: 34em; background: color-mix(in srgb, var(--door) 90%, #000); padding: 8px 12px; border-radius: 3px; }
+
+/* waitlist */
+.wl-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 32px; align-items: start; }
+.wl-grid h2 { font-size: clamp(32px, 4.4vw, 48px); margin-bottom: 12px; }
+.wl-grid .sub { margin-bottom: 0; }
+.wl-form { display: flex; flex-direction: column; gap: 16px; }
+.picks { display: flex; gap: 8px; flex-wrap: wrap; }
+.pick { position: relative; }
+.pick input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; width: 100%; height: 100%; }
+.pick span { display: block; border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 16px; font-size: 14px; }
+.pick input:checked + span { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.pick input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 2px; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.wl-ok { border: 2px solid var(--ok); border-radius: 6px; padding: 22px; background: var(--surface); }
+.wl-ok h3 { font-size: 36px; margin-bottom: 8px; }
+
+/* plan + checkout */
+.page-head { padding-block: 36px 20px; }
+.page-head h1 { font-size: clamp(38px, 5.5vw, 60px); margin-block: 8px; }
+.progress { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.progress span { font-family: var(--font-mono); font-size: 12px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+.progress span.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.plan-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; padding-bottom: 24px; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px; }
+.card h2 { font-size: 30px; margin-bottom: 4px; }
+.card .hint { color: var(--muted); font-size: 15px; margin-bottom: 18px; }
+.area-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.area-val { font-family: var(--font-display); font-size: 64px; font-weight: 700; line-height: 1; }
+.area-val small { font-size: 28px; margin-left: 4px; }
+input[type=range] { width: 100%; accent-color: var(--door); margin-block: 14px; height: 32px; }
+.cells { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-block: 8px 14px; }
+.cells i { aspect-ratio: 1; border: 1.5px solid var(--line); border-radius: 2px; display: block; }
+.cells i.on { background: var(--door); border-color: var(--door); }
+.fits { display: flex; gap: 6px 20px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.fits b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; width: 100%; height: 100%; }
+.opt label { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 14px; border: 2px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer; }
+.opt input:checked + label { border-color: var(--door); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--door); }
+.opt input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: 2px; }
+.opt .t { font-weight: 600; }
+.opt .d { font-size: 14px; color: var(--muted); }
+.opt .p { font-family: var(--font-mono); font-size: 14px; margin-top: auto; padding-top: 6px; }
+.summary { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 70px); display: flex; flex-direction: column; gap: 12px; }
+.summary h2 { font-size: 28px; }
+.line { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.line span:last-child { font-family: var(--font-mono); white-space: nowrap; }
+.total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-top: 6px; }
+.total b { font-family: var(--font-display); font-size: 52px; line-height: 1; }
+.total b small { font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.fine { font-size: 13px; color: var(--muted); }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field label, .field .lbl { font-size: 14px; font-weight: 600; }
+.field input[type=text], .field input[type=email], .field input[type=tel], .field select, .field textarea { background: var(--surface); border: 1.5px solid var(--line); border-radius: 4px; padding: 10px 12px; min-height: 44px; width: 100%; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--door); }
+.payslot { border: 2px dashed var(--line); border-radius: 6px; padding: 20px; background: var(--surface-2); }
+.payslot b { display: block; margin-bottom: 4px; }
+.payslot p { color: var(--muted); font-size: 14px; }
+.err { color: var(--danger); font-size: 14px; min-height: 20px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.check input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--door); flex: none; }
+.done { text-align: left; max-width: 640px; }
+.done h2 { font-size: 48px; margin-bottom: 12px; }
+
+/* account */
+.acct-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.stat .k { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.stat .v { font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
+.meter { height: 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; margin-top: 10px; }
+.meter i { display: block; height: 100%; background: var(--door); }
+.tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.tools input[type=search] { flex: 1 1 220px; min-width: 0; background: var(--surface); border: 1.5px solid var(--line); border-radius: 4px; padding: 10px 12px; min-height: 44px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.boxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; padding-bottom: 96px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.box.sel { border-color: var(--door); box-shadow: 0 0 0 2px var(--door); }
+.box-top { display: flex; align-items: center; gap: 10px; }
+.box-top input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--door); }
+.box-id { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: var(--muted); flex: 1; }
+.pill { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; }
+.pill.stored { color: var(--ok); }
+.pill.pickup { color: var(--warn); }
+.pill.out { color: var(--muted); }
+.box-name { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; border: 0; border-bottom: 1.5px solid transparent; background: transparent; padding: 2px 0; width: 100%; }
+.box-name:hover, .box-name:focus { border-bottom-color: var(--line); }
+.notes { width: 100%; border: 1.5px dashed var(--line); border-radius: 4px; background: var(--surface-2); padding: 10px 12px; resize: none; min-height: 84px; line-height: 1.45; font-size: 15px; }
+.notes:focus { border-style: solid; border-color: var(--door); background: var(--surface); }
+.box-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); font-family: var(--font-mono); }
+.saved { opacity: 0; transition: opacity .2s; color: var(--ok); }
+.saved.on { opacity: 1; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font-size: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; padding: 1px 8px; color: var(--muted); }
+.empty { grid-column: 1 / -1; padding: 40px 16px; text-align: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 6px; }
+.actionbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--ink); color: var(--bg); padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.actionbar .inner { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.actionbar .btn { border-color: var(--bg); color: var(--bg); }
+.actionbar .btn:hover { background: transparent; filter: brightness(1.2); }
+.actionbar .btn-signal { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border: 2px solid var(--ink); padding: 10px 16px; border-radius: 4px; z-index: 40; max-width: calc(100vw - 32px); font-size: 15px; }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; gap: 28px; padding-block: 32px; }
+  .door { min-height: 240px; }
+  .plan-grid { grid-template-columns: minmax(0, 1fr); }
+  .summary { position: static; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .wl-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<div class="proto" data-i18n="proto"></div>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="#home"><i></i>Skrytka</a>
+    <nav class="main" data-i18n-label="navLabel">
+      <a href="#home" data-nav="home" data-i18n="navHome"></a>
+      <a href="#plan" data-nav="plan" data-i18n="navPlan"></a>
+      <a href="#account" data-nav="account" data-i18n="navAccount"></a>
+      <a href="#waitlist" data-i18n="navWait"></a>
+    </nav>
+    <div class="lang" role="group" data-i18n-label="langLabel">
+      <button type="button" data-lang="pl" aria-pressed="false">PL</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- HOME -->
+<div id="view-home">
+  <div class="wrap hero">
+    <div>
+      <div class="eyebrow" data-i18n="heroEyebrow"></div>
+      <h1 data-i18n="heroH1"></h1>
+      <p class="lead" data-i18n="heroLead"></p>
+      <div class="actions">
+        <a class="btn btn-signal" href="#plan" data-i18n="ctaPlan"></a>
+        <a class="btn" href="#waitlist" data-i18n="ctaWait"></a>
+      </div>
+    </div>
+    <div class="door" aria-hidden="true">
+      <div class="plate" data-i18n="plate"></div>
+      <div class="price num"><span id="hero-price">0</span><small data-i18n="perMonth"></small></div>
+    </div>
+  </div>
+
+  <section class="block" id="fits">
+    <div class="wrap">
+      <h2 data-i18n="fitsH"></h2>
+      <p class="sub" data-i18n="fitsSub"></p>
+      <div class="fit-list" id="fit-list"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 data-i18n="howH"></h2>
+      <p class="sub" data-i18n="howSub"></p>
+      <ol class="steps">
+        <li><h3 data-i18n="s1t"></h3><p data-i18n="s1p"></p></li>
+        <li><h3 data-i18n="s2t"></h3><p data-i18n="s2p"></p></li>
+        <li><h3 data-i18n="s3t"></h3><p data-i18n="s3p"></p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 data-i18n="startH"></h2>
+      <p class="sub" data-i18n="startSub"></p>
+      <div class="starters" id="starters"></div>
+    </div>
+  </section>
+
+  <section class="block" id="waitlist">
+    <div class="wrap wl-grid">
+      <div>
+        <div class="eyebrow" data-i18n="wlEyebrow"></div>
+        <h2 data-i18n="wlH"></h2>
+        <p class="sub" data-i18n="wlSub"></p>
+      </div>
+      <div>
+        <form class="wl-form card" id="wl-form" novalidate>
+          <div class="field"><label for="wl-email" data-i18n="wlEmail"></label><input id="wl-email" type="email" autocomplete="email" data-i18n-ph="wlEmailPh"></div>
+          <div class="field"><span class="lbl" id="wl-what-l" data-i18n="wlWhat"></span>
+            <div class="picks" role="group" aria-labelledby="wl-what-l">
+              <label class="pick"><input type="checkbox" name="store" value="skis"><span data-i18n="pSkis"></span></label>
+              <label class="pick"><input type="checkbox" name="store" value="bike"><span data-i18n="pBike"></span></label>
+              <label class="pick"><input type="checkbox" name="store" value="tyres"><span data-i18n="pTyres"></span></label>
+              <label class="pick"><input type="checkbox" name="store" value="clothes"><span data-i18n="pClothes"></span></label>
+              <label class="pick"><input type="checkbox" name="store" value="other"><span data-i18n="pOther"></span></label>
+            </div>
+          </div>
+          <div class="field"><label for="wl-space" data-i18n="wlSpace"></label>
+            <select id="wl-space">
+              <option value="unsure" data-i18n="sp0"></option>
+              <option value="lt1" data-i18n="sp1"></option>
+              <option value="1-3" data-i18n="sp2"></option>
+              <option value="3-6" data-i18n="sp3"></option>
+              <option value="gt6" data-i18n="sp4"></option>
+            </select>
+          </div>
+          <div class="hp" aria-hidden="true"><label for="wl-hp">Website</label><input id="wl-hp" type="text" tabindex="-1" autocomplete="off"></div>
+          <label class="check"><input type="checkbox" id="wl-consent"><span data-i18n="wlConsent"></span></label>
+          <div class="err" id="wl-err" role="alert"></div>
+          <div><button type="submit" class="btn btn-signal" id="wl-btn" data-i18n="wlBtn"></button></div>
+          <p class="fine" id="wl-demo" data-i18n="wlDemo"></p>
+        </form>
+        <div class="wl-ok" id="wl-ok" hidden>
+          <h3 data-i18n="wlOkH"></h3>
+          <p data-i18n="wlOkText"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 data-i18n="faqH"></h2>
+      <p class="sub" data-i18n="faqSub"></p>
+      <details class="faq"><summary data-i18n="q1"></summary><p data-i18n="a1"></p></details>
+      <details class="faq"><summary data-i18n="q2"></summary><p data-i18n="a2"></p></details>
+      <details class="faq"><summary data-i18n="q3"></summary><p data-i18n="a3"></p></details>
+      <details class="faq"><summary data-i18n="q4"></summary><p data-i18n="a4"></p></details>
+      <details class="faq"><summary data-i18n="q5"></summary><p data-i18n="a5"></p></details>
+    </div>
+  </section>
+</div>
+
+<!-- PLAN + CHECKOUT -->
+<div id="view-plan" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow" data-i18n="planEyebrow"></div>
+      <h1 id="plan-title"></h1>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <div class="plan-grid">
+      <div class="stack">
+        <!-- step 1 -->
+        <div id="step1" class="stack">
+          <div class="card">
+            <h2 data-i18n="spaceH"></h2>
+            <p class="hint" data-i18n="spaceHint"></p>
+            <div class="area-top"><div class="area-val num"><span id="area-out">3</span><small>m²</small></div><div class="eyebrow" id="vol-out"></div></div>
+            <input type="range" id="area" min="1" max="10" step="0.5" value="3" data-i18n-label="areaAria">
+            <div class="cells" id="cells" aria-hidden="true"></div>
+            <div class="fits" id="fits-out"></div>
+          </div>
+          <div class="card">
+            <h2 data-i18n="tripsH"></h2>
+            <p class="hint" data-i18n="tripsHint"></p>
+            <div class="opts" id="trip-opts"></div>
+          </div>
+          <div class="card">
+            <h2 data-i18n="billH"></h2>
+            <p class="hint" data-i18n="billHint"></p>
+            <div class="opts" id="bill-opts"></div>
+          </div>
+        </div>
+
+        <!-- step 2 -->
+        <form id="step2" class="stack" hidden novalidate>
+          <div class="card">
+            <h2 data-i18n="detH"></h2>
+            <p class="hint" data-i18n="detHint"></p>
+            <div class="form-grid">
+              <div class="field"><label for="f-name" data-i18n="fName"></label><input id="f-name" type="text" autocomplete="name"></div>
+              <div class="field"><label for="f-email" data-i18n="wlEmail"></label><input id="f-email" type="email" autocomplete="email"></div>
+              <div class="field"><label for="f-phone" data-i18n="fPhone"></label><input id="f-phone" type="tel" autocomplete="tel"></div>
+              <div class="field"><label for="f-window" data-i18n="fWindow"></label>
+                <select id="f-window"><option data-i18n="win1"></option><option data-i18n="win2"></option><option data-i18n="win3"></option><option data-i18n="win4"></option></select></div>
+              <div class="field full"><label for="f-addr" data-i18n="fAddr"></label><input id="f-addr" type="text" autocomplete="street-address" data-i18n-ph="fAddrPh"></div>
+              <div class="field full"><label for="f-access" data-i18n="fAccess"></label><textarea id="f-access" rows="2" data-i18n-ph="fAccessPh"></textarea></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2 data-i18n="payH"></h2>
+            <p class="hint" data-i18n="payHint"></p>
+            <div class="payslot"><b data-i18n="payB"></b><p data-i18n="payP"></p></div>
+          </div>
+          <div class="card stack">
+            <label class="check"><input type="checkbox" id="f-terms"><span data-i18n="fTerms"></span></label>
+            <div class="err" id="f-err" role="alert"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button type="button" class="btn" id="back1" data-i18n="back"></button>
+              <button type="submit" class="btn btn-signal" data-i18n="startSub"></button>
+            </div>
+          </div>
+        </form>
+
+        <!-- step 3 -->
+        <div id="step3" class="card done" hidden>
+          <div class="eyebrow" data-i18n="doneEyebrow"></div>
+          <h2 data-i18n="doneH"></h2>
+          <p id="done-text" style="margin-bottom:20px"></p>
+          <a class="btn btn-signal" href="#account" data-i18n="openAcct"></a>
+        </div>
+      </div>
+
+      <aside class="summary" id="summary-wrap">
+        <div class="card">
+          <h2 data-i18n="sumH"></h2>
+          <div id="lines"></div>
+          <div class="total"><span class="eyebrow" data-i18n="total"></span><b class="num"><span id="total-out">0</span><small data-i18n="perMonth"></small></b></div>
+          <p class="fine" id="billed-out" style="margin-top:6px"></p>
+          <button class="btn btn-signal" id="to-checkout" style="width:100%;margin-top:14px" data-i18n="toCheckout"></button>
+          <p class="fine" style="margin-top:10px" data-i18n="vat"></p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- ACCOUNT -->
+<div id="view-account" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow" data-i18n="acctEyebrow"></div>
+      <h1 data-i18n="navAccount"></h1>
+    </div>
+    <div class="acct-top">
+      <div class="stat"><div class="k" data-i18n="kUsed"></div><div class="v num" id="a-used">0</div><div class="meter"><i id="a-meter" style="width:0"></i></div></div>
+      <div class="stat"><div class="k" data-i18n="kTrips"></div><div class="v num" id="a-trips">0</div></div>
+      <div class="stat"><div class="k" data-i18n="kNext"></div><div class="v num" id="a-next">0</div></div>
+    </div>
+    <div class="tools">
+      <input type="search" id="q" data-i18n-ph="searchPh" data-i18n-label="searchAria">
+      <div class="chips" id="filters">
+        <button class="chip" data-f="all" aria-pressed="true" data-i18n="fAll"></button>
+        <button class="chip" data-f="stored" aria-pressed="false" data-i18n="stStored"></button>
+        <button class="chip" data-f="out" aria-pressed="false" data-i18n="stOut"></button>
+      </div>
+      <button class="btn btn-small" id="add-box" data-i18n="addBox"></button>
+    </div>
+    <div class="boxes" id="boxes"></div>
+  </div>
+  <div class="actionbar" id="actionbar" hidden>
+    <div class="inner">
+      <span id="sel-count"></span>
+      <div style="display:flex;gap:8px"><button class="btn btn-small" id="sel-clear" data-i18n="clear"></button><button class="btn btn-small btn-signal" id="sel-go" data-i18n="reqReturn"></button></div>
+    </div>
+  </div>
+</div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <a class="brand" href="#home"><i></i>Skrytka</a>
+    <p data-i18n="ftText"></p>
+  </div>
+</footer>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  /* Waitlist signups are sent to Web3Forms. The access key is public by design. */
+  var WAITLIST_ENDPOINT = 'https://api.web3forms.com/submit';
+  var WEB3FORMS_KEY = '14d13d90-48a6-42d3-b53d-82cd994cdaf1';
+
+  var $ = function (s) { return document.querySelector(s); };
+
+  /* ---------- translations ---------- */
+  var DICT = {
+    en: {
+      proto: 'Prototype for review. Prices, addresses and boxes are examples.',
+      navLabel: 'Main', navHome: 'Home', navPlan: 'Plan and checkout', navAccount: 'My storage', navWait: 'Waitlist', langLabel: 'Language',
+      heroEyebrow: 'Central Warsaw / Śródmieście',
+      heroH1: "Your skis don't need to live in the hallway.",
+      heroLead: 'Private storage for skis, bikes, winter tyres and everything else that has no place in a flat. Pay monthly, pick the space you need, and we bring things back when you ask.',
+      ctaPlan: 'Build your plan', ctaWait: 'Join the waitlist',
+      plate: 'UNIT / 3 m² / 6 TRIPS A YEAR', perMonth: 'zł / month',
+      fitsH: 'What fits, and how much floor it takes',
+      fitsSub: 'Units are measured in square metres of floor, with room to stack up to 2.2 m high. These footprints are estimates for planning.',
+      fSkis: 'Skis and poles', fBoard: 'Snowboard in a bag', fSledge: 'Sledge', fTyres: 'Set of 4 winter tyres', fBike: 'Adult bicycle', fClothes: 'Box of winter clothes',
+      howH: 'How it works', howSub: 'Three steps, and you only do the first one.', step: 'Step',
+      s1t: 'Choose your space', s1p: 'Pick the square metres and how many pickups and returns you want each year.',
+      s2t: 'We collect your things', s2p: 'A driver comes to your door in the agreed window and labels every box with an ID.',
+      s3t: 'Find it in your account', s3p: 'Each box has a notes field. Write what is inside, search later, and request a return in two taps.',
+      startH: 'Starting points', startSub: 'Choose one and adjust it in the next step.', starter: 'Starter', choose: 'Choose {name}',
+      st1: 'A pair of skis, a set of tyres and a couple of boxes of clothes.',
+      st2: 'Two bikes, winter tyres, sledges and the whole winter wardrobe.',
+      st3: "A family's seasonal gear, with a trip every month.",
+      wlEyebrow: 'Opening soon', wlH: 'Join the waitlist',
+      wlSub: 'We are opening in central Warsaw soon. Leave your email and we will write to you once, when the first units are ready.',
+      wlEmail: 'Email', wlEmailPh: 'name@example.com', wlWhat: 'What would you store?',
+      pSkis: 'Skis', pBike: 'Bike', pTyres: 'Winter tyres', pClothes: 'Clothes', pOther: 'Other',
+      wlSpace: 'How much space do you need?', sp0: 'Not sure yet', sp1: 'Up to 1 m²', sp2: '1 to 3 m²', sp3: '3 to 6 m²', sp4: 'More than 6 m²',
+      wlConsent: 'I agree to be contacted about the launch. I can unsubscribe at any time.',
+      wlBtn: 'Join the waitlist', wlBusy: 'Sending...',
+      wlDemo: 'Prototype: answers stay in this browser until a form service is connected.',
+      wlErrEmail: 'Enter an email address like name@example.com.', wlErrConsent: 'Tick the box so we may contact you about the launch.', wlErrSend: 'Sending failed. Check your connection and try again.',
+      wlOkH: 'You are on the list', wlOkText: 'Thank you. We will write when the first units are ready.',
+      faqH: 'Questions', faqSub: 'Draft answers. Replace them with your real terms before launch.',
+      q1: 'How do you collect my things?', a1: 'You choose a time window in the app. A driver picks up from your door and brings boxes to the storage hub in Śródmieście. Each box gets a numbered label.',
+      q2: 'Is it safe?', a2: 'The hub is dry, heated above freezing, monitored and insured. Add your own insurance details here once you have a provider.',
+      q3: 'Can I change the size later?', a3: 'Yes. You can grow or shrink in half-metre steps. The change applies from the next billing period.',
+      q4: "What can't I store?", a4: 'Food, fuel, gas cylinders, chemicals, anything flammable, and anything alive.',
+      q5: 'What happens if I cancel?', a5: 'We return everything to you on a final trip, then close the subscription.',
+      ftText: 'Storage hub in Śródmieście, Warsaw. The exact address is shared after you subscribe. Working name, replace it with your brand.',
+      planEyebrow: 'Subscription', planT1: 'Build your plan', planT2: 'Checkout', planT3: 'Welcome',
+      prog1: '1 Plan', prog2: '2 Details and payment', prog3: '3 Done',
+      spaceH: 'How much space?', spaceHint: 'Move the slider. Each square on the plan is half a square metre.', areaAria: 'Storage area in square metres',
+      stack: 'with stacking',
+      fitsLead: 'Roughly:', fitBikes: 'bikes', fitTyres: 'sets of tyres', fitSkis: 'pairs of skis',
+      tripsH: 'Pickups and returns', tripsHint: 'One trip is a driver visit to collect boxes or bring them back. Extra trips are 39 zł each.',
+      tSelf: 'Self-service', tSelfD: 'You bring and collect things at the hub yourself.',
+      t2: '2 trips a year', t2D: 'One seasonal swap in autumn and one in spring.',
+      t6: '6 trips a year', t6D: 'A trip every second month.',
+      t12: '12 trips a year', t12D: 'One trip every month.',
+      included: 'Included',
+      billH: 'Billing', billHint: 'Pay monthly or save 15% by paying for a year up front.',
+      bMonth: 'Monthly', bMonthD: 'Charged every month, change or cancel any time.', bYear: 'Yearly, save 15%', bYearD: 'One payment for twelve months.',
+      sumH: 'Your plan', lineStorage: 'Storage {a} m² at {r} zł', lineDisc: 'Yearly discount', total: 'Total',
+      billedM: 'Billed monthly', billedY: 'Billed once a year: {n} zł', toCheckout: 'Continue to checkout', vat: 'Prices include 23% VAT. Cancel any time.',
+      detH: 'Your details', detHint: 'We use these to book the first pickup.', fName: 'Full name', fPhone: 'Phone', fWindow: 'First pickup window',
+      win1: 'Weekday morning (8:00 to 12:00)', win2: 'Weekday evening (17:00 to 21:00)', win3: 'Saturday (10:00 to 16:00)', win4: 'No pickup, I will bring things myself',
+      fAddr: 'Pickup address in Warsaw', fAddrPh: 'Street, number, flat', fAccess: 'Access notes for the driver', fAccessPh: 'Floor, lift, intercom code',
+      payH: 'Payment', payHint: 'Card, BLIK and Przelewy24 in one secure form.', payB: 'Payment form placeholder',
+      payP: 'The real checkout renders here and handles the card details. This prototype never asks for or stores any.',
+      fTerms: 'I accept the terms and the privacy policy.', back: 'Back to plan', startSub: 'Start subscription (demo)',
+      eName: 'Enter your full name.', eEmail: 'Enter an email address like name@example.com.', eAddr: 'Enter the pickup address, or choose "No pickup" above.', eTerms: 'Accept the terms to continue.',
+      doneEyebrow: 'Demo only. Nothing was charged.', doneH: 'Your plan is set up',
+      doneText: '{a} m², {trips}, {price} zł per month{yearly}. We would now email a confirmation and offer pickup slots.', yearly: ' (billed yearly)', openAcct: 'Open my storage',
+      acctEyebrow: 'Customer account', kUsed: 'Space used', kTrips: 'Trips left this year', kNext: 'Next payment', usedOf: '{a} of {b} m²', tripsOf: '{x} of {n}',
+      searchPh: 'Search boxes and notes, for example tyres', searchAria: 'Search boxes and notes',
+      fAll: 'All', stStored: 'In storage', stPickup: 'Return requested', stOut: 'With you', addBox: 'Add box',
+      selAria: 'Select box for return', nameAria: 'Box name', notesAria: 'What is inside', notesPh: 'What is inside? For example: size 43 boots, goggles in the left pocket', saved: 'Saved',
+      noMatch: 'No box matches "{q}". Try another word.', noBoxes: 'No boxes here yet. Choose Add box to create the first one.',
+      selCount: 'Selected boxes: {n}', clear: 'Clear', reqReturn: 'Request return',
+      toastAdd: 'Box added. In real life it appears after we collect it.',
+      toastRet1: 'Return requested for 1 box. We will email you a time slot.', toastRetN: 'Return requested for {n} boxes. We will email you a time slot.',
+      newBox: 'New box',
+      b1n: 'Skis and poles', b1t: 'Head skis 172 cm, poles 120 cm. Goggles tucked in the bag side pocket.',
+      b2n: 'Winter tyres', b2t: '4 tyres, 205/55 R16, on steel rims. Tread about 5 mm. Wheel bolts in the zip bag.',
+      b3n: 'Winter clothes',
+      b4n: 'Sledge and helmet', b4t: 'Used it in January, return in spring.',
+      b5n: 'City bike', b5t: 'Frame size 54. Lock key is on the left handlebar.',
+      tg_winter: 'winter', tg_sport: 'sport', tg_car: 'car', tg_clothes: 'clothes', tg_kids: 'kids', tg_bike: 'bike'
+    },
+    pl: {
+      proto: 'Prototyp do oceny. Ceny, adresy i pudła są przykładowe.',
+      navLabel: 'Menu główne', navHome: 'Strona główna', navPlan: 'Plan i zamówienie', navAccount: 'Mój magazyn', navWait: 'Lista oczekujących', langLabel: 'Język',
+      heroEyebrow: 'Centrum Warszawy / Śródmieście',
+      heroH1: 'Twoje narty nie muszą mieszkać w przedpokoju.',
+      heroLead: 'Prywatny magazyn w centrum Warszawy na narty, rowery, opony zimowe i wszystko, co nie mieści się w mieszkaniu. Płacisz miesięcznie, wybierasz potrzebną przestrzeń, a my przywozimy rzeczy z powrotem, kiedy o to poprosisz.',
+      ctaPlan: 'Skonfiguruj plan', ctaWait: 'Dołącz do listy',
+      plate: 'BOKS / 3 m² / 6 PRZEJAZDÓW W ROKU', perMonth: 'zł / miesiąc',
+      fitsH: 'Co się mieści i ile zajmuje miejsca',
+      fitsSub: 'Boksy mierzymy w metrach kwadratowych powierzchni, z możliwością piętrowania do 2,2 m. Podane powierzchnie są szacunkowe i służą do planowania.',
+      fSkis: 'Narty i kijki', fBoard: 'Snowboard w pokrowcu', fSledge: 'Sanki', fTyres: 'Komplet 4 opon zimowych', fBike: 'Rower dorosły', fClothes: 'Pudło z odzieżą zimową',
+      howH: 'Jak to działa', howSub: 'Trzy kroki, a Ty robisz tylko pierwszy.', step: 'Krok',
+      s1t: 'Wybierz przestrzeń', s1p: 'Wybierz metry kwadratowe oraz liczbę odbiorów i zwrotów w roku.',
+      s2t: 'Odbieramy Twoje rzeczy', s2p: 'Kierowca przyjeżdża pod Twoje drzwi w umówionym terminie i oznacza każde pudło numerem.',
+      s3t: 'Znajdziesz je na koncie', s3p: 'Każde pudło ma pole na notatki. Wpisz, co jest w środku, wyszukaj później i zamów zwrot w dwóch kliknięciach.',
+      startH: 'Propozycje na start', startSub: 'Wybierz jedną i dopasuj ją w następnym kroku.', starter: 'Na start', choose: 'Wybierz {name}',
+      st1: 'Para nart, komplet opon i kilka pudeł z ubraniami.',
+      st2: 'Dwa rowery, opony zimowe, sanki i cała zimowa garderoba.',
+      st3: 'Sezonowy sprzęt całej rodziny i przejazd co miesiąc.',
+      wlEyebrow: 'Wkrótce otwarcie', wlH: 'Dołącz do listy oczekujących',
+      wlSub: 'Wkrótce otwieramy się w centrum Warszawy. Zostaw e-mail, a napiszemy do Ciebie raz, gdy pierwsze boksy będą gotowe.',
+      wlEmail: 'E-mail', wlEmailPh: 'imie@example.com', wlWhat: 'Co chcesz przechowywać?',
+      pSkis: 'Narty', pBike: 'Rower', pTyres: 'Opony zimowe', pClothes: 'Odzież', pOther: 'Inne',
+      wlSpace: 'Ile miejsca potrzebujesz?', sp0: 'Jeszcze nie wiem', sp1: 'Do 1 m²', sp2: 'Od 1 do 3 m²', sp3: 'Od 3 do 6 m²', sp4: 'Ponad 6 m²',
+      wlConsent: 'Zgadzam się na kontakt w sprawie startu usługi. Mogę w każdej chwili zrezygnować.',
+      wlBtn: 'Dołącz do listy', wlBusy: 'Wysyłanie...',
+      wlDemo: 'Prototyp: odpowiedzi zostają w tej przeglądarce, dopóki nie podłączysz usługi formularzy.',
+      wlErrEmail: 'Wpisz adres e-mail, na przykład imie@example.com.', wlErrConsent: 'Zaznacz zgodę, abyśmy mogli napisać do Ciebie w sprawie startu.', wlErrSend: 'Nie udało się wysłać. Sprawdź połączenie i spróbuj ponownie.',
+      wlOkH: 'Jesteś na liście', wlOkText: 'Dziękujemy. Napiszemy, gdy pierwsze boksy będą gotowe.',
+      faqH: 'Pytania', faqSub: 'Wstępne odpowiedzi. Przed startem zastąp je swoimi zasadami.',
+      q1: 'Jak odbieracie moje rzeczy?', a1: 'Wybierasz termin w aplikacji. Kierowca odbiera rzeczy spod Twoich drzwi i zawozi pudła do magazynu w Śródmieściu. Każde pudło dostaje numerowaną etykietę.',
+      q2: 'Czy to bezpieczne?', a2: 'Magazyn jest suchy, ogrzewany powyżej zera, monitorowany i ubezpieczony. Uzupełnij tu dane ubezpieczenia, gdy wybierzesz ubezpieczyciela.',
+      q3: 'Czy mogę później zmienić rozmiar?', a3: 'Tak. Możesz powiększać lub zmniejszać powierzchnię co pół metra. Zmiana obowiązuje od kolejnego okresu rozliczeniowego.',
+      q4: 'Czego nie można przechowywać?', a4: 'Żywności, paliw, butli z gazem, chemikaliów, rzeczy łatwopalnych ani niczego żywego.',
+      q5: 'Co się stanie, jeśli zrezygnuję?', a5: 'Odwozimy wszystko do Ciebie podczas ostatniego przejazdu, a potem zamykamy subskrypcję.',
+      ftText: 'Magazyn w Śródmieściu w Warszawie. Dokładny adres podamy po zawarciu subskrypcji. Nazwa robocza, zastąp ją swoją marką.',
+      planEyebrow: 'Subskrypcja', planT1: 'Skonfiguruj plan', planT2: 'Zamówienie', planT3: 'Witaj',
+      prog1: '1 Plan', prog2: '2 Dane i płatność', prog3: '3 Gotowe',
+      spaceH: 'Ile miejsca?', spaceHint: 'Przesuń suwak. Każdy kwadrat na planie to pół metra kwadratowego.', areaAria: 'Powierzchnia magazynu w metrach kwadratowych',
+      stack: 'przy piętrowaniu',
+      fitsLead: 'Orientacyjnie:', fitBikes: 'rowery', fitTyres: 'komplety opon', fitSkis: 'pary nart',
+      tripsH: 'Odbiory i zwroty', tripsHint: 'Przejazd to wizyta kierowcy, który odbiera pudła lub przywozi je z powrotem. Dodatkowy przejazd kosztuje 39 zł.',
+      tSelf: 'Samoobsługa', tSelfD: 'Sam przywozisz i odbierasz rzeczy w magazynie.',
+      t2: '2 przejazdy w roku', t2D: 'Jedna wymiana sezonowa jesienią i jedna wiosną.',
+      t6: '6 przejazdów w roku', t6D: 'Przejazd co drugi miesiąc.',
+      t12: '12 przejazdów w roku', t12D: 'Jeden przejazd co miesiąc.',
+      included: 'W cenie',
+      billH: 'Rozliczenie', billHint: 'Płać co miesiąc albo oszczędź 15%, płacąc z góry za rok.',
+      bMonth: 'Miesięcznie', bMonthD: 'Płatność co miesiąc, zmiana lub rezygnacja w dowolnym momencie.', bYear: 'Rocznie, taniej o 15%', bYearD: 'Jedna płatność za dwanaście miesięcy.',
+      sumH: 'Twój plan', lineStorage: 'Magazyn {a} m² po {r} zł', lineDisc: 'Rabat roczny', total: 'Razem',
+      billedM: 'Płatność co miesiąc', billedY: 'Płatność raz w roku: {n} zł', toCheckout: 'Przejdź do zamówienia', vat: 'Ceny zawierają 23% VAT. Rezygnacja w dowolnym momencie.',
+      detH: 'Twoje dane', detHint: 'Użyjemy ich do umówienia pierwszego odbioru.', fName: 'Imię i nazwisko', fPhone: 'Telefon', fWindow: 'Termin pierwszego odbioru',
+      win1: 'Dzień powszedni rano (8:00–12:00)', win2: 'Dzień powszedni wieczorem (17:00–21:00)', win3: 'Sobota (10:00–16:00)', win4: 'Bez odbioru, przywiozę rzeczy sam',
+      fAddr: 'Adres odbioru w Warszawie', fAddrPh: 'Ulica, numer, mieszkanie', fAccess: 'Wskazówki dla kierowcy', fAccessPh: 'Piętro, winda, kod do domofonu',
+      payH: 'Płatność', payHint: 'Karta, BLIK i Przelewy24 w jednym bezpiecznym formularzu.', payB: 'Miejsce na formularz płatności',
+      payP: 'Tu pojawi się prawdziwy formularz płatności, który obsługuje dane karty. Ten prototyp nigdy ich nie prosi ani nie zapisuje.',
+      fTerms: 'Akceptuję regulamin i politykę prywatności.', back: 'Wróć do planu', startSub: 'Rozpocznij subskrypcję (demo)',
+      eName: 'Wpisz imię i nazwisko.', eEmail: 'Wpisz adres e-mail, na przykład imie@example.com.', eAddr: 'Wpisz adres odbioru albo wybierz powyżej „Bez odbioru”.', eTerms: 'Zaakceptuj regulamin, aby kontynuować.',
+      doneEyebrow: 'Tylko demo. Nic nie zostało pobrane.', doneH: 'Twój plan jest gotowy',
+      doneText: '{a} m², {trips}, {price} zł miesięcznie{yearly}. Teraz wysłalibyśmy potwierdzenie e-mailem i zaproponowali terminy odbioru.', yearly: ' (płatne rocznie)', openAcct: 'Otwórz mój magazyn',
+      acctEyebrow: 'Konto klienta', kUsed: 'Zajęta przestrzeń', kTrips: 'Pozostałe przejazdy w tym roku', kNext: 'Następna płatność', usedOf: '{a} z {b} m²', tripsOf: '{x} z {n}',
+      searchPh: 'Szukaj pudeł i notatek, na przykład opony', searchAria: 'Szukaj pudeł i notatek',
+      fAll: 'Wszystkie', stStored: 'W magazynie', stPickup: 'Zlecony zwrot', stOut: 'U Ciebie', addBox: 'Dodaj pudło',
+      selAria: 'Wybierz pudło do zwrotu', nameAria: 'Nazwa pudła', notesAria: 'Zawartość pudła', notesPh: 'Co jest w środku? Na przykład: buty rozmiar 43, gogle w lewej kieszeni', saved: 'Zapisano',
+      noMatch: 'Brak pudeł pasujących do „{q}”. Spróbuj innego słowa.', noBoxes: 'Nie ma tu jeszcze pudeł. Wybierz „Dodaj pudło”, aby utworzyć pierwsze.',
+      selCount: 'Wybrane pudła: {n}', clear: 'Wyczyść', reqReturn: 'Zamów zwrot',
+      toastAdd: 'Pudło dodane. W prawdziwej usłudze pojawi się po odbiorze.',
+      toastRet1: 'Zlecono zwrot 1 pudła. Wyślemy Ci termin e-mailem.', toastRetN: 'Zlecono zwrot pudeł: {n}. Wyślemy Ci termin e-mailem.',
+      newBox: 'Nowe pudło',
+      b1n: 'Narty i kijki', b1t: 'Narty Head 172 cm, kijki 120 cm. Gogle w bocznej kieszeni pokrowca.',
+      b2n: 'Opony zimowe', b2t: '4 opony 205/55 R16 na felgach stalowych. Bieżnik ok. 5 mm. Śruby do kół w woreczku.',
+      b3n: 'Odzież zimowa',
+      b4n: 'Sanki i kask', b4t: 'Używane w styczniu, wrócą do magazynu wiosną.',
+      b5n: 'Rower miejski', b5t: 'Rama w rozmiarze 54. Klucz do zapięcia jest na lewej rączce kierownicy.',
+      tg_winter: 'zima', tg_sport: 'sport', tg_car: 'auto', tg_clothes: 'ubrania', tg_kids: 'dzieci', tg_bike: 'rower'
+    }
+  };
+
+  var LANG = 'en';
+  try { var saved = localStorage.getItem('skrytka-lang'); if (saved === 'pl' || saved === 'en') LANG = saved; else if ((navigator.language || '').toLowerCase().indexOf('pl') === 0) LANG = 'pl'; } catch (e) {}
+  function t(key, vars) {
+    var s = (DICT[LANG] && DICT[LANG][key]); if (s === undefined) s = DICT.en[key]; if (s === undefined) s = key;
+    if (vars) Object.keys(vars).forEach(function (k) { s = s.split('{' + k + '}').join(vars[k]); });
+    return s;
+  }
+  var loc = function () { return LANG === 'pl' ? 'pl-PL' : 'en-GB'; };
+  var zl = function (n) { return Math.round(n).toLocaleString(loc()); };
+  var dec = function (n, d) { return n.toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d }); };
+  var area1 = function (n) { return n.toLocaleString(loc(), { maximumFractionDigits: 1 }); };
+
+  /* ---------- pricing (example numbers) ---------- */
+  var TRIPS = {
+    self: { n: 0, price: 0, tk: 'tSelf', dk: 'tSelfD' },
+    t2: { n: 2, price: 19, tk: 't2', dk: 't2D' },
+    t6: { n: 6, price: 49, tk: 't6', dk: 't6D' },
+    t12: { n: 12, price: 89, tk: 't12', dk: 't12D' }
+  };
+  var PLAN = { area: 3, trips: 't6', billing: 'month' };
+  function quote(p) {
+    var rate = Math.round(140 * (1 - Math.min(0.2, (p.area - 1) * 0.025)));
+    var storage = Math.round(p.area * rate);
+    var trips = TRIPS[p.trips].price;
+    var sub = storage + trips;
+    var monthly = p.billing === 'year' ? Math.round(sub * 0.85) : sub;
+    return { rate: rate, storage: storage, trips: trips, sub: sub, monthly: monthly, year: monthly * 12 };
+  }
+
+  /* ---------- views ---------- */
+  var VIEWS = ['home', 'plan', 'account'];
+  function show(name) {
+    if (VIEWS.indexOf(name) < 0) name = 'home';
+    VIEWS.forEach(function (v) { $('#view-' + v).hidden = v !== name; });
+    document.querySelectorAll('[data-nav]').forEach(function (a) {
+      if (a.dataset.nav === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    if (name === 'plan') renderPlan();
+    if (name === 'account') renderAccount();
+    window.scrollTo(0, 0);
+  }
+  function route() {
+    var h = location.hash.replace('#', '');
+    if (h === 'fits' || h === 'waitlist') {
+      if ($('#view-home').hidden) show('home');
+      var el = document.getElementById(h); if (el) el.scrollIntoView();
+      return;
+    }
+    show(h);
+  }
+  window.addEventListener('hashchange', route);
+
+  /* ---------- static text ---------- */
+  function applyStatic() {
+    document.documentElement.lang = LANG;
+    document.documentElement.style.setProperty('--step-label', JSON.stringify(t('step')));
+    document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function (el) { el.placeholder = t(el.dataset.i18nPh); });
+    document.querySelectorAll('[data-i18n-label]').forEach(function (el) { el.setAttribute('aria-label', t(el.dataset.i18nLabel)); });
+    document.querySelectorAll('.lang button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.lang === LANG ? 'true' : 'false'); });
+    $('#wl-btn').textContent = t('wlBtn');
+    $('#wl-demo').hidden = !!WAITLIST_ENDPOINT;
+  }
+  function setLang(l) {
+    LANG = l; try { localStorage.setItem('skrytka-lang', l); } catch (e) {}
+    applyStatic(); renderHome(); renderPlan(); setStep(step, true); fillDone(); renderAccount(); renderBar();
+    $('#wl-err').textContent = '';
+  }
+  document.querySelector('.lang').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-lang]'); if (b && b.dataset.lang !== LANG) setLang(b.dataset.lang);
+  });
+
+  /* ---------- home ---------- */
+  var FITS = [['fSkis', 0.15], ['fBoard', 0.2], ['fSledge', 0.4], ['fTyres', 0.35], ['fBike', 0.7], ['fClothes', 0.12]];
+  var STARTERS = [{ area: 1, trips: 't2', tk: 'st1' }, { area: 3, trips: 't6', tk: 'st2' }, { area: 6, trips: 't12', tk: 'st3' }];
+  function renderHome() {
+    $('#hero-price').textContent = zl(quote({ area: 3, trips: 't6', billing: 'month' }).monthly);
+    var fl = $('#fit-list'); fl.innerHTML = '';
+    FITS.forEach(function (f) { var d = document.createElement('div'); d.innerHTML = '<b></b><span></span>'; d.children[0].textContent = t(f[0]); d.children[1].textContent = dec(f[1], 2) + ' m²'; fl.appendChild(d); });
+    var host = $('#starters'); host.innerHTML = '';
+    STARTERS.forEach(function (s) {
+      var q = quote({ area: s.area, trips: s.trips, billing: 'month' });
+      var d = document.createElement('div'); d.className = 'starter';
+      d.innerHTML = '<div class="eyebrow"></div><h3></h3><div class="cost num"></div><p></p><button class="btn"></button>';
+      d.querySelector('.eyebrow').textContent = t('starter');
+      d.querySelector('h3').textContent = s.area + ' m²';
+      d.querySelector('.cost').textContent = zl(q.monthly) + ' ' + t('perMonth') + ', ' + t(TRIPS[s.trips].tk);
+      d.querySelector('p').textContent = t(s.tk);
+      var b = d.querySelector('button'); b.textContent = t('choose', { name: s.area + ' m²' });
+      b.addEventListener('click', function () { PLAN.area = s.area; PLAN.trips = s.trips; setStep(1); if (location.hash === '#plan') show('plan'); else location.hash = 'plan'; });
+      host.appendChild(d);
+    });
+  }
+
+  /* ---------- web3forms ---------- */
+  function sendEntry(fields, cb) {
+    var payload = Object.assign({ access_key: WEB3FORMS_KEY, from_name: 'Skrytka website' }, fields);
+    fetch(WAITLIST_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json().then(function (j) { cb(r.ok && j.success !== false); }, function () { cb(r.ok); }); })
+      .catch(function () { cb(false); });
+  }
+
+  /* ---------- waitlist ---------- */
+  var wlForm = $('#wl-form');
+  wlForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = $('#wl-err'); err.textContent = '';
+    var email = $('#wl-email').value.trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = t('wlErrEmail'); $('#wl-email').focus(); return; }
+    if (!$('#wl-consent').checked) { err.textContent = t('wlErrConsent'); return; }
+    var done = function () { wlForm.hidden = true; $('#wl-ok').hidden = false; };
+    if ($('#wl-hp').value) { done(); return; }
+    var data = {
+      email: email,
+      store: Array.prototype.map.call(wlForm.querySelectorAll('input[name=store]:checked'), function (i) { return i.value; }),
+      space: $('#wl-space').value, lang: LANG, source: 'skrytka-site', sentAt: new Date().toISOString()
+    };
+    var btn = $('#wl-btn'); btn.disabled = true; btn.textContent = t('wlBusy');
+    var finish = function (ok) {
+      btn.disabled = false; btn.textContent = t('wlBtn');
+      if (ok) done(); else err.textContent = t('wlErrSend');
+    };
+    if (WAITLIST_ENDPOINT) {
+      sendEntry({
+        subject: 'New Skrytka waitlist signup', type: 'waitlist',
+        email: data.email, store: data.store.join(', ') || '-', space: data.space, lang: data.lang, source: data.source, sentAt: data.sentAt
+      }, finish);
+    } else {
+      try { var list = JSON.parse(localStorage.getItem('skrytka-waitlist-v1') || '[]'); list.push(data); localStorage.setItem('skrytka-waitlist-v1', JSON.stringify(list)); } catch (x) {}
+      finish(true);
+    }
+  });
+
+  /* ---------- plan ---------- */
+  var step = 1;
+  function setStep(n, keepScroll) {
+    step = n;
+    $('#step1').hidden = n !== 1; $('#step2').hidden = n !== 2; $('#step3').hidden = n !== 3;
+    $('#summary-wrap').hidden = n === 3;
+    $('#to-checkout').hidden = n !== 1;
+    var prog = $('#progress'); prog.innerHTML = '';
+    ['prog1', 'prog2', 'prog3'].forEach(function (k, i) { var s = document.createElement('span'); s.textContent = t(k); if (i === n - 1) s.className = 'on'; prog.appendChild(s); });
+    $('#plan-title').textContent = t('planT' + n);
+    if (!keepScroll) window.scrollTo(0, 0);
+  }
+  function radios(host, name, items, current, onPick) {
+    host.innerHTML = '';
+    items.forEach(function (it) {
+      var w = document.createElement('div'); w.className = 'opt';
+      var id = name + '-' + it.key;
+      w.innerHTML = '<input type="radio" name="' + name + '" id="' + id + '"><label for="' + id + '"><span class="t"></span><span class="d"></span><span class="p num"></span></label>';
+      w.querySelector('.t').textContent = it.title; w.querySelector('.d').textContent = it.desc; w.querySelector('.p').textContent = it.price;
+      var inp = w.querySelector('input'); inp.checked = it.key === current;
+      inp.addEventListener('change', function () { onPick(it.key); });
+      host.appendChild(w);
+    });
+  }
+  function renderPlan() {
+    $('#area').value = PLAN.area;
+    var trips = Object.keys(TRIPS).map(function (k) { return { key: k, title: t(TRIPS[k].tk), desc: t(TRIPS[k].dk), price: TRIPS[k].price ? '+' + TRIPS[k].price + ' ' + t('perMonth') : t('included') }; });
+    radios($('#trip-opts'), 'trips', trips, PLAN.trips, function (k) { PLAN.trips = k; update(); });
+    radios($('#bill-opts'), 'bill', [
+      { key: 'month', title: t('bMonth'), desc: t('bMonthD'), price: '' },
+      { key: 'year', title: t('bYear'), desc: t('bYearD'), price: '' }
+    ], PLAN.billing, function (k) { PLAN.billing = k; update(); });
+    update();
+  }
+  function update() {
+    var a = PLAN.area, q = quote(PLAN);
+    $('#area-out').textContent = area1(a);
+    $('#vol-out').textContent = dec(a * 2.2, 1) + ' m³ ' + t('stack');
+    var cells = $('#cells'); cells.innerHTML = '';
+    var on = Math.round(a / 0.5);
+    for (var i = 0; i < 20; i++) { var c = document.createElement('i'); if (i < on) c.className = 'on'; cells.appendChild(c); }
+    $('#fits-out').innerHTML = '<span></span><span>' + t('fitBikes') + ': <b>' + Math.floor(a / 0.7) + '</b></span><span>' + t('fitTyres') + ': <b>' + Math.floor(a / 0.35) + '</b></span><span>' + t('fitSkis') + ': <b>' + Math.floor(a / 0.15) + '</b></span>';
+    $('#fits-out').firstChild.textContent = t('fitsLead');
+    var lines = [
+      [t('lineStorage', { a: area1(a), r: q.rate }), zl(q.storage) + ' zł'],
+      [t(TRIPS[PLAN.trips].tk), q.trips ? zl(q.trips) + ' zł' : t('included')]
+    ];
+    if (PLAN.billing === 'year') lines.push([t('lineDisc'), '-' + zl(q.sub - q.monthly) + ' zł']);
+    $('#lines').innerHTML = '';
+    lines.forEach(function (l) { var d = document.createElement('div'); d.className = 'line'; d.innerHTML = '<span></span><span></span>'; d.children[0].textContent = l[0]; d.children[1].textContent = l[1]; $('#lines').appendChild(d); });
+    $('#total-out').textContent = zl(q.monthly);
+    $('#billed-out').textContent = PLAN.billing === 'year' ? t('billedY', { n: zl(q.year) }) : t('billedM');
+    var ps = document.querySelectorAll('#bill-opts .p');
+    if (ps.length === 2) {
+      ps[0].textContent = zl(quote({ area: a, trips: PLAN.trips, billing: 'month' }).monthly) + ' ' + t('perMonth');
+      ps[1].textContent = zl(quote({ area: a, trips: PLAN.trips, billing: 'year' }).monthly) + ' ' + t('perMonth');
+    }
+  }
+  $('#area').addEventListener('input', function (e) { PLAN.area = parseFloat(e.target.value); update(); });
+  $('#to-checkout').addEventListener('click', function () { setStep(2); });
+  $('#back1').addEventListener('click', function () { setStep(1); });
+  function fillDone() {
+    var q = quote(PLAN);
+    $('#done-text').textContent = t('doneText', { a: area1(PLAN.area), trips: t(TRIPS[PLAN.trips].tk).toLowerCase(), price: zl(q.monthly), yearly: PLAN.billing === 'year' ? t('yearly') : '' });
+  }
+  $('#step2').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = $('#f-err'); err.textContent = '';
+    if (!$('#f-name').value.trim()) { err.textContent = t('eName'); $('#f-name').focus(); return; }
+    if (!/^\S+@\S+\.\S+$/.test($('#f-email').value.trim())) { err.textContent = t('eEmail'); $('#f-email').focus(); return; }
+    if (!$('#f-addr').value.trim() && $('#f-window').selectedIndex !== 3) { err.textContent = t('eAddr'); $('#f-addr').focus(); return; }
+    if (!$('#f-terms').checked) { err.textContent = t('eTerms'); return; }
+    var q = quote(PLAN), win = $('#f-window');
+    var btn = $('#step2 button[type=submit]'); btn.disabled = true; btn.textContent = t('wlBusy');
+    sendEntry({
+      subject: 'New Skrytka subscription (checkout)', type: 'checkout',
+      name: $('#f-name').value.trim(), email: $('#f-email').value.trim(), phone: $('#f-phone').value.trim() || '-',
+      pickupWindow: win.options[win.selectedIndex].textContent, address: $('#f-addr').value.trim() || '-', access: $('#f-access').value.trim() || '-',
+      area: PLAN.area + ' m2', trips: t(TRIPS[PLAN.trips].tk), billing: PLAN.billing === 'year' ? 'yearly' : 'monthly',
+      monthlyPrice: q.monthly + ' zl', yearlyTotal: q.year + ' zl', termsAccepted: 'yes',
+      lang: LANG, source: 'skrytka-site', sentAt: new Date().toISOString()
+    }, function (ok) {
+      btn.disabled = false; btn.textContent = t('startSub');
+      if (!ok) { err.textContent = t('wlErrSend'); return; }
+      fillDone(); setStep(3);
+    });
+  });
+
+  /* ---------- account ---------- */
+  var KEY = 'skrytka-boxes-v2';
+  var DEFAULT_BOXES = [
+    { id: 'BX-0141', size: 0.15, status: 'stored', tags: ['winter', 'sport'], nameKey: 'b1n', notesKey: 'b1t' },
+    { id: 'BX-0142', size: 0.35, status: 'stored', tags: ['car'], nameKey: 'b2n', notesKey: 'b2t' },
+    { id: 'BX-0143', size: 0.12, status: 'stored', tags: ['clothes'], nameKey: 'b3n', notes: '' },
+    { id: 'BX-0144', size: 0.4, status: 'out', tags: ['kids'], nameKey: 'b4n', notesKey: 'b4t' },
+    { id: 'BX-0145', size: 0.7, status: 'stored', tags: ['bike'], nameKey: 'b5n', notesKey: 'b5t' }
+  ];
+  var boxes, selected = {}, filter = 'all', tripsUsed = 2;
+  try { var raw = localStorage.getItem(KEY); boxes = raw ? JSON.parse(raw) : null; } catch (e) { boxes = null; }
+  if (!Array.isArray(boxes)) boxes = DEFAULT_BOXES.map(function (b) { return Object.assign({}, b); });
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(boxes)); } catch (e) {} }
+  var bName = function (b) { return b.name !== undefined ? b.name : t(b.nameKey); };
+  var bNotes = function (b) { return b.notes !== undefined ? b.notes : t(b.notesKey); };
+  var STATUS = { stored: 'stStored', pickup: 'stPickup', out: 'stOut' };
+  var toastTimer;
+  function toast(msg) { var el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.hidden = true; }, 3200); }
+
+  function renderStats() {
+    var used = boxes.filter(function (b) { return b.status !== 'out'; }).reduce(function (s, b) { return s + b.size; }, 0);
+    $('#a-used').textContent = t('usedOf', { a: dec(used, 1), b: area1(PLAN.area) });
+    $('#a-meter').style.width = Math.min(100, used / PLAN.area * 100) + '%';
+    var n = TRIPS[PLAN.trips].n;
+    $('#a-trips').textContent = n ? t('tripsOf', { x: Math.max(0, n - tripsUsed), n: n }) : t('tSelf');
+    var d = new Date(); d.setMonth(d.getMonth() + (PLAN.billing === 'year' ? 12 : 1));
+    $('#a-next').textContent = zl(quote(PLAN).monthly * (PLAN.billing === 'year' ? 12 : 1)) + ' zł, ' + d.toLocaleDateString(loc(), { day: 'numeric', month: 'short' });
+  }
+  function renderAccount() { renderStats(); renderBoxes(); }
+  function renderBoxes() {
+    var q = $('#q').value.trim().toLowerCase();
+    var host = $('#boxes'); host.innerHTML = '';
+    var list = boxes.filter(function (b) {
+      if (filter === 'stored' && b.status === 'out') return false;
+      if (filter === 'out' && b.status !== 'out') return false;
+      if (!q) return true;
+      var tags = b.tags.map(function (k) { return t('tg_' + k); }).join(' ');
+      return (bName(b) + ' ' + bNotes(b) + ' ' + b.id + ' ' + tags).toLowerCase().indexOf(q) >= 0;
+    });
+    if (!list.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = q ? t('noMatch', { q: $('#q').value.trim() }) : t('noBoxes'); host.appendChild(e); }
+    list.forEach(function (b) {
+      var c = document.createElement('article'); c.className = 'box' + (selected[b.id] ? ' sel' : '');
+      c.innerHTML = '<div class="box-top"><input type="checkbox"><span class="box-id"></span><span class="pill"></span></div>' +
+        '<input class="box-name" type="text"><textarea class="notes" rows="3"></textarea>' +
+        '<div class="box-foot"><span class="size"></span><span class="saved"></span></div><div class="tags"></div>';
+      var cb = c.querySelector('input[type=checkbox]'); cb.setAttribute('aria-label', t('selAria')); cb.checked = !!selected[b.id]; cb.disabled = b.status !== 'stored';
+      cb.addEventListener('change', function () { if (cb.checked) selected[b.id] = true; else delete selected[b.id]; c.classList.toggle('sel', cb.checked); renderBar(); });
+      c.querySelector('.box-id').textContent = b.id;
+      var p = c.querySelector('.pill'); p.textContent = t(STATUS[b.status]); p.className = 'pill ' + b.status;
+      var nm = c.querySelector('.box-name'); nm.value = bName(b); nm.setAttribute('aria-label', t('nameAria'));
+      var nt = c.querySelector('.notes'); nt.value = bNotes(b); nt.placeholder = t('notesPh'); nt.setAttribute('aria-label', t('notesAria'));
+      c.querySelector('.size').textContent = dec(b.size, 2) + ' m²';
+      var saved = c.querySelector('.saved'); saved.textContent = t('saved');
+      var st;
+      function flash() { saved.classList.add('on'); clearTimeout(st); st = setTimeout(function () { saved.classList.remove('on'); }, 1200); }
+      function grow() { nt.style.height = 'auto'; nt.style.height = Math.max(84, nt.scrollHeight + 2) + 'px'; }
+      nm.addEventListener('input', function () { b.name = nm.value; persist(); flash(); });
+      nt.addEventListener('input', function () { b.notes = nt.value; persist(); flash(); grow(); });
+      var tg = c.querySelector('.tags'); b.tags.forEach(function (k) { var s = document.createElement('span'); s.className = 'tag'; s.textContent = t('tg_' + k); tg.appendChild(s); });
+      host.appendChild(c); grow();
+    });
+  }
+  function renderBar() {
+    var n = Object.keys(selected).length;
+    $('#actionbar').hidden = n === 0;
+    $('#sel-count').textContent = t('selCount', { n: n });
+  }
+  $('#q').addEventListener('input', renderBoxes);
+  $('#filters').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    filter = b.dataset.f;
+    document.querySelectorAll('#filters .chip').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    renderBoxes();
+  });
+  $('#add-box').addEventListener('click', function () {
+    var max = boxes.reduce(function (m, b) { return Math.max(m, parseInt(b.id.slice(3), 10) || 0); }, 140);
+    boxes.unshift({ id: 'BX-' + String(max + 1).padStart(4, '0'), size: 0.12, status: 'stored', tags: [], nameKey: 'newBox', notes: '' });
+    persist(); filter = 'all'; $('#q').value = '';
+    document.querySelectorAll('#filters .chip').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.f === 'all' ? 'true' : 'false'); });
+    renderAccount();
+    var first = document.querySelector('#boxes .notes'); if (first) first.focus();
+    toast(t('toastAdd'));
+  });
+  $('#sel-clear').addEventListener('click', function () { selected = {}; renderBar(); renderBoxes(); });
+  $('#sel-go').addEventListener('click', function () {
+    var ids = Object.keys(selected);
+    boxes.forEach(function (b) { if (selected[b.id]) b.status = 'pickup'; });
+    tripsUsed++; persist(); selected = {}; renderBar(); renderAccount();
+    toast(ids.length === 1 ? t('toastRet1') : t('toastRetN', { n: ids.length }));
+  });
+
+  /* ---------- boot ---------- */
+  applyStatic(); renderHome(); setStep(1, true); renderBar();
+  var h0 = location.hash.replace('#', '');
+  if (h0 === 'fits' || h0 === 'waitlist') { show('home'); route(); } else show(VIEWS.indexOf(h0) >= 0 ? h0 : 'home');
+})();
+</script>
+
+</body></html>
